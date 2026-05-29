@@ -1,35 +1,15 @@
 const Task = require("../models/Task");
 exports.createTask = async (req, res) => {
-
     try {
-        const {
-            title,
-            description,
-            assignedTo,
-        } = req.body;
-
-        const task = await Task.create({
-            title,
-            description,
-            assignedTo,
-            createdBy: req.user.id
-        });
-
-
+        const { title, description, assignedTo, } = req.body;
+        const task = await Task.create({ title, description, assignedTo, createdBy: req.user.id });
         res.status(201).json({
-
             message: "Task created successfully",
-
             task,
-
         });
-
     } catch (error) {
-
         res.status(500).json({
-
             message: error.message,
-
         });
 
     }
@@ -40,10 +20,8 @@ exports.createTask = async (req, res) => {
 
 
 exports.getTasks = async (req, res) => {
-
     try {
 
-        // query params
         const page = Number(req.query.page) || 1;
 
         const limit = Number(req.query.limit) || 5;
@@ -53,29 +31,12 @@ exports.getTasks = async (req, res) => {
         const skip = (page - 1) * limit;
 
         let filter = {}
-         if (req.user.role === "ADMIN") {
-
+        if (req.user.role === "ADMIN") {
             filter = {};
-
         }
-
-        else if (req.user.role === "MANAGER") {
- filter.createdBy = req.user.id;
-
-        }
-
-        else {
-
-            filter.assignedTo = req.user.id;
-
-        }
-
-
-        if (status) {
-
-            filter.status = status;
-
-        }
+        else if (req.user.role === "MANAGER") { filter.createdBy = req.user.id; }
+        else { filter.assignedTo = req.user.id; }
+        if (status) { filter.status = status; }
 
         const tasks = await Task.find(filter)
 
@@ -88,33 +49,10 @@ exports.getTasks = async (req, res) => {
             .limit(limit)
 
             .sort({ createdAt: -1 });
-
-
-
-        // total count
         const totalTasks = await Task.countDocuments(filter);
-
-
-
-        res.status(200).json({
-
-            currentPage: page,
-
-            totalPages: Math.ceil(totalTasks / limit),
-
-            totalTasks,
-
-            tasks,
-
-        });
-
+        res.status(200).json({ currentPage: page, totalPages: Math.ceil(totalTasks / limit), totalTasks, tasks, });
     } catch (error) {
-
-        res.status(500).json({
-
-            message: error.message,
-
-        });
+        res.status(500).json({ message: error.message, });
 
     }
 
@@ -125,234 +63,87 @@ exports.getTasks = async (req, res) => {
 exports.updateTaskStatus = async (req, res) => {
 
     try {
-
         const { taskId } = req.params;
-
         const { status } = req.body;
-
         const task = await Task.findById(taskId);
 
         if (!task) {
-
             return res.status(404).json({
-
                 message: "Task not found",
-
             });
-
         }
-
 
         if (task.assignedTo.toString() !== req.user.id) {
-
             return res.status(403).json({
-
                 message: "You can update only your assigned tasks",
-
             });
-
         }
-
-
-        const validTransitions = {
-
-            TODO: ["IN_PROGRESS"],
-
-            IN_PROGRESS: ["DONE"],
-
-            DONE: [],
-
-        };
-
+        const validTransitions = { TODO: ["IN_PROGRESS"], IN_PROGRESS: ["DONE"], DONE: [], };
 
         if (!validTransitions[task.status].includes(status)) {
-
-            return res.status(400).json({
-
-                message: `Cannot move from ${task.status} to ${status}`,
-
-            });
-
+            return res.status(400).json({ message: `Cannot move from ${task.status} to ${status}`, });
         }
-
-
         task.status = status;
-
-
         await task.save();
-
-        res.status(200).json({
-
-            message: "Task status updated",
-
-            task,
-
-        });
-
+        res.status(200).json({ message: "Task status updated", task, });
     } catch (error) {
-
         res.status(500).json({
-
             message: error.message,
-
         });
 
     }
 
 };
-// ==========================================
-// UPDATE TASK DETAILS
-// ==========================================
+
 
 exports.updateTask = async (req, res) => {
 
-  try {
+    try {
+        const { taskId } = req.params;
+        const task = await Task.findById(taskId);
 
-    // get task id
-    const { taskId } = req.params;
+        if (!task) { return res.status(404).json({ message: "Task not found", }); }
+        if (req.user.role === "MANAGER" && task.createdBy.toString() !== req.user.id
+        ) {
+            return res.status(403).json({ message: "You can update only your created tasks", });
+        }
+        const { title, description, assignedTo, status, } = req.body;
+        if (title) task.title = title;
 
-    // find task
-    const task = await Task.findById(taskId);
+        if (description) task.description = description;
 
-    // task check
-    if (!task) {
+        if (assignedTo) task.assignedTo = assignedTo;
 
-      return res.status(404).json({
+        if (status) task.status = status;
 
-        message: "Task not found",
+        await task.save();
+        res.status(200).json({ message: "Task updated successfully", task });
 
-      });
-
+    } catch (error) {
+        res.status(500).json({ message: error.message, });
     }
-
-
-    // MANAGER can update only own tasks
-    if (
-
-      req.user.role === "MANAGER" &&
-
-      task.createdBy.toString() !== req.user.id
-
-    ) {
-
-      return res.status(403).json({
-
-        message: "You can update only your created tasks",
-
-      });
-
-    }
-
-
-    // update fields
-    const {
-
-      title,
-
-      description,
-
-      assignedTo,
-
-      status,
-
-    } = req.body;
-
-
-    // apply updates
-    if (title) task.title = title;
-
-    if (description) task.description = description;
-
-    if (assignedTo) task.assignedTo = assignedTo;
-
-    if (status) task.status = status;
-
-
-    // save
-    await task.save();
-
-
-    res.status(200).json({
-
-      message: "Task updated successfully",
-
-      task,
-
-    });
-
-  } catch (error) {
-
-    res.status(500).json({
-
-      message: error.message,
-
-    });
-
-  }
 
 };
-// ==========================================
-// DELETE TASK
-// ==========================================
+
 
 exports.deleteTask = async (req, res) => {
+    try {
+        const { taskId } = req.params;
+        const task = await Task.findById(taskId);
+        if (!task) {
+            return res.status(404).json
+                ({ message: "Task not found", });
+        }
 
-  try {
-
-    // get task id
-    const { taskId } = req.params;
-
-    // find task
-    const task = await Task.findById(taskId);
-
-    // task check
-    if (!task) {
-
-      return res.status(404).json({
-
-        message: "Task not found",
-
-      });
-
-    }
-
-
-    // MANAGER can delete only own tasks
-    if (
-
-      req.user.role === "MANAGER" &&
-
-      task.createdBy.toString() !== req.user.id
-
-    ) {
-
-      return res.status(403).json({
-
-        message: "You can delete only your created tasks",
-
-      });
+        if (
+            req.user.role === "MANAGER" && task.createdBy.toString() !== req.user.id) {
+            return res.status(403).json({ message: "You can delete only your created tasks", });
+        }
+        await Task.findByIdAndDelete(taskId);
+        res.status(200).json({ message: "Task deleted successfully" });
+    } catch (error) {
+        res.status(500).json({ message: error.message, });
 
     }
-
-
-    // delete task
-    await Task.findByIdAndDelete(taskId);
-
-
-    res.status(200).json({
-
-      message: "Task deleted successfully",
-
-    });
-
-  } catch (error) {
-
-    res.status(500).json({
-
-      message: error.message,
-
-    });
-
-  }
 
 };
