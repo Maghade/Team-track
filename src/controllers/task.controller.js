@@ -200,3 +200,159 @@ exports.updateTaskStatus = async (req, res) => {
     }
 
 };
+// ==========================================
+// UPDATE TASK DETAILS
+// ==========================================
+
+exports.updateTask = async (req, res) => {
+
+  try {
+
+    // get task id
+    const { taskId } = req.params;
+
+    // find task
+    const task = await Task.findById(taskId);
+
+    // task check
+    if (!task) {
+
+      return res.status(404).json({
+
+        message: "Task not found",
+
+      });
+
+    }
+
+
+    // MANAGER can update only own tasks
+    if (
+
+      req.user.role === "MANAGER" &&
+
+      task.createdBy.toString() !== req.user.id
+
+    ) {
+
+      return res.status(403).json({
+
+        message: "You can update only your created tasks",
+
+      });
+
+    }
+
+
+    // update fields
+    const {
+
+      title,
+
+      description,
+
+      assignedTo,
+
+      status,
+
+    } = req.body;
+
+
+    // apply updates
+    if (title) task.title = title;
+
+    if (description) task.description = description;
+
+    if (assignedTo) task.assignedTo = assignedTo;
+
+    if (status) task.status = status;
+
+
+    // save
+    await task.save();
+
+
+    res.status(200).json({
+
+      message: "Task updated successfully",
+
+      task,
+
+    });
+
+  } catch (error) {
+
+    res.status(500).json({
+
+      message: error.message,
+
+    });
+
+  }
+
+};
+// ==========================================
+// DELETE TASK
+// ==========================================
+
+exports.deleteTask = async (req, res) => {
+
+  try {
+
+    // get task id
+    const { taskId } = req.params;
+
+    // find task
+    const task = await Task.findById(taskId);
+
+    // task check
+    if (!task) {
+
+      return res.status(404).json({
+
+        message: "Task not found",
+
+      });
+
+    }
+
+
+    // MANAGER can delete only own tasks
+    if (
+
+      req.user.role === "MANAGER" &&
+
+      task.createdBy.toString() !== req.user.id
+
+    ) {
+
+      return res.status(403).json({
+
+        message: "You can delete only your created tasks",
+
+      });
+
+    }
+
+
+    // delete task
+    await Task.findByIdAndDelete(taskId);
+
+
+    res.status(200).json({
+
+      message: "Task deleted successfully",
+
+    });
+
+  } catch (error) {
+
+    res.status(500).json({
+
+      message: error.message,
+
+    });
+
+  }
+
+};
