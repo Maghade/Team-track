@@ -9,7 +9,6 @@ exports.register = async (req, res) => {
 
     const { name, email, password, role } = req.body;
 
-    // check existing user
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
@@ -17,11 +16,9 @@ exports.register = async (req, res) => {
         message: "User already exists",
       });
     }
-
-    // hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // create user
+  
     const user = await User.create({
       name,
       email,
@@ -51,7 +48,7 @@ exports.login = async (req, res) => {
 
     const { email, password } = req.body;
 
-    // find user
+
     const user = await User.findOne({ email });
 
     if (!user) {
@@ -60,7 +57,7 @@ exports.login = async (req, res) => {
       });
     }
 
-    // compare password
+  
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
@@ -69,7 +66,7 @@ exports.login = async (req, res) => {
       });
     }
 
-    // token
+
     const token = jwt.sign(
       {
         id: user._id,
